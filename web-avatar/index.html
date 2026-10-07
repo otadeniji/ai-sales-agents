@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Sales Avatar</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #111; color: #eee;
+           display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    #avatarWrap { width: min(480px, 90vw); aspect-ratio: 3/4; background: #222;
+                  border-radius: 16px; margin-top: 24px; overflow: hidden;
+                  display: flex; align-items: center; justify-content: center; color: #666; }
+    #avatarWrap video { width: 100%; height: 100%; object-fit: cover; }
+    #controls { margin: 24px; display: flex; gap: 12px; }
+    button { padding: 12px 24px; font-size: 16px; border-radius: 8px; border: none;
+             cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    #talk { background: #4f8cff; color: #fff; }
+    #hangup { background: #333; color: #fff; }
+    #status { color: #999; min-height: 1.5em; }
+    #hint { color: #555; font-size: 13px; max-width: 480px; text-align: center; padding: 0 16px; }
+  </style>
+</head>
+<body>
+  <h1>Talk to our AI sales agent</h1>
+  <div id="avatarWrap"><span id="placeholder">avatar loads here</span></div>
+  <p id="status">Click "Talk" to start.</p>
+  <div id="controls">
+    <button id="talk">Talk</button>
+    <button id="hangup" disabled>End</button>
+  </div>
+  <p id="hint">Requires the agent worker (<code>python agent.py dev</code>) and this page's
+  token server (<code>python token_server.py</code>) to be running, with LiveKit keys in <code>.env</code>.</p>
+
+  <script type="module">
+    import { Room, RoomEvent, Track } from 'https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.esm.mjs';
+
+    const status = document.getElementById('status');
+    const talkBtn = document.getElementById('talk');
+    const hangupBtn = document.getElementById('hangup');
+    const avatarWrap = document.getElementById('avatarWrap');
+    let room = null;
+
+    function setStatus(t) { status.textContent = t; }
+
+    talkBtn.onclick = async () => {
+      talkBtn.disabled = true;
+      try {
+        setStatus('Getting a session token…');
+        const res = await fetch('/token?identity=' + encodeURIComponent('web-' + Date.now().toString(36)));
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        room = new Room();
+        setStatus('Connecting…');
+        room.on(RoomEvent.TrackSubscribed, (track) => {
+          if (track.kind === Track.Kind.Video) {
+            const el = track.attach();
+            avatarWrap.innerHTML = '';
+            avatarWrap.appendChild(el);
+          } else if (track.kind === Track.Kind.Audio) {
+            track.attach(); // plays the agent's voice
+          }
+        });
+        room.on(RoomEvent.Disconnected, () => {
+          setStatus('Disconnected.');
+          talkBtn.disabled = false;
+          hangupBtn.disabled = true;
+        });
+
+        await room.connect(data.url, data.token);
+        await room.localParticipant.setMicrophoneEnabled(true);
+        setStatus('Connected — say hello!');
+        hangupBtn.disabled = false;
+      } catch (err) {
+        setStatus('Could not start: ' + err.message);
+        talkBtn.disabled = false;
+      }
+    };
+
+    hangupBtn.onclick = async () => {
+      if (room) { await room.disconnect(); room = null; }
+      talkBtn.disabled = false;
+      hangupBtn.disabled = true;
+      setStatus('Call ended.');
+    };
+  </script>
+</body>
+</html>

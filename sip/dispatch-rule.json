@@ -1,0 +1,18 @@
+{
+    "name": "telnyx-inbound-dispatch",
+    "roomConfig": {
+        "agents": [
+            {
+                "agentName": "sales-voice-agent"
+            }
+        ]
+    },
+    "rule": {
+        "dispatchRuleIndividual": {
+            "roomPrefix": "call-"
+        }
+    },
+    "trunkIds": [
+        "ST_YOUR_TRUNK_ID"
+    ]
+}

@@ -1,0 +1,22 @@
+# Secrets — never commit the real keys
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Node (if the web lane grows one)
+node_modules/
+dist/
